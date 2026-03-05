@@ -6,24 +6,12 @@ import os
 
 load_dotenv()
 
-ENV = os.getenv("ENV")  
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-
-if ENV == "prod":
-    DB_URL = (
-        f"postgresql+psycopg2://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}"
-    )
-else:
-    DB_URL = (
-        f"postgresql+psycopg2://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}"
-        f"@{os.getenv('POSTGRES_HOST')}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}"
-    )
-
- 
-engine = create_engine(DB_URL)
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base() 
+Base = declarative_base()
 
 def get_db():
     db = SessionLocal()
