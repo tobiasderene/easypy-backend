@@ -1,7 +1,13 @@
 from fastapi import FastAPI
 from app.routers import user, product, wallet, order, transaction, withdrawal, bank_movement, oauth_account, image
+import os
 
-app = FastAPI(title="Marketplace API")
+
+app = FastAPI(
+    title="Easypy",
+    docs_url="/docs" if os.getenv("ENV") == "development" else None,
+    redoc_url="/redoc" if os.getenv("ENV") == "development" else None
+)
 
 app.include_router(oauth_account.router)
 app.include_router(user.router)
