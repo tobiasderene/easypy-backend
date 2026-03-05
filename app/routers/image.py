@@ -12,7 +12,7 @@ from app.services.storage import (
     delete_product_image,
     delete_profile_image
 )
-from app.routers.auth import get_current_user
+from app.dependencies import get_current_user
 
 router = APIRouter(prefix="/images", tags=["Images"])
 
