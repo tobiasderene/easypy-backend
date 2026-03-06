@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.routers import user, product, wallet, order, transaction, withdrawal, bank_movement, oauth_account, image
 import os
 
