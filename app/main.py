@@ -9,6 +9,18 @@ app = FastAPI(
     redoc_url="/redoc" if os.getenv("ENV") == "development" else None
 )
 
+origins = [
+    "https://easypy-6d0d3.web.app"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(oauth_account.router)
 app.include_router(user.router)
 app.include_router(product.router)
