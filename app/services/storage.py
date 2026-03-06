@@ -1,15 +1,26 @@
 import os
+import json
 import uuid
 from google.cloud import storage
+from google.oauth2 import service_account
 from fastapi import UploadFile
 
 GCS_BUCKET_PRODUCTS = os.getenv("GCS_BUCKET_PRODUCTS")
 GCS_BUCKET_PROFILES = os.getenv("GCS_BUCKET_PROFILES")
+GCP_CREDENTIALS = os.getenv("GCP_CREDENTIALS")
 
-client = storage.Client()
+
+def get_storage_client():
+    if GCP_CREDENTIALS:
+        credentials_info = json.loads(GCP_CREDENTIALS)
+        credentials = service_account.Credentials.from_service_account_info(credentials_info)
+        return storage.Client(credentials=credentials)
+    # local: usa el archivo de credenciales via GOOGLE_APPLICATION_CREDENTIALS
+    return storage.Client()
 
 
 def _upload_file(bucket_name: str, file: UploadFile, folder: str = "") -> str:
+    client = get_storage_client()
     bucket = client.bucket(bucket_name)
     extension = file.filename.split(".")[-1]
     filename = f"{folder}/{uuid.uuid4()}.{extension}" if folder else f"{uuid.uuid4()}.{extension}"
@@ -27,6 +38,7 @@ def upload_profile_image(file: UploadFile, user_id: int) -> str:
 
 
 def delete_file(bucket_name: str, public_url: str):
+    client = get_storage_client()
     prefix = f"https://storage.googleapis.com/{bucket_name}/"
     blob_name = public_url.replace(prefix, "")
     bucket = client.bucket(bucket_name)
