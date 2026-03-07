@@ -40,9 +40,10 @@ OAuthAccountOut.model_rebuild()
 
 
 class LocalRegisterSchema(BaseModel):
-    email: EmailStr
     name: str
+    email: str
     password: str
+    user_role: str
 
 
 class LocalLoginSchema(BaseModel):

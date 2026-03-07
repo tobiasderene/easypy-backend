@@ -12,6 +12,9 @@ from app.schemas.oauth_account import OAuthAccountCreate
 from app.dependencies import get_current_user
 from itsdangerous import URLSafeSerializer
 
+from urllib.parse import urlencode
+from fastapi.responses import RedirectResponse
+
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
@@ -25,6 +28,7 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 def create_session_cookie(response: Response, user_id: int):
     token = serializer.dumps({"user_id": user_id})
@@ -49,11 +53,14 @@ def login_google():
     query = "&".join(f"{k}={v}" for k, v in params.items())
     return {"url": f"{GOOGLE_AUTH_URL}?{query}"}
 
+from urllib.parse import urlencode
+from fastapi.responses import RedirectResponse
+
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 @router.get("/callback")
-async def google_callback(code: str, response: Response, db: Session = Depends(get_db)):
+async def google_callback(code: str, db: Session = Depends(get_db)):
     async with httpx.AsyncClient() as client:
-
         token_response = await client.post(GOOGLE_TOKEN_URL, data={
             "code": code,
             "client_id": GOOGLE_CLIENT_ID,
@@ -79,40 +86,24 @@ async def google_callback(code: str, response: Response, db: Session = Depends(g
     if not google_id or not email:
         raise HTTPException(status_code=400, detail="No se pudo obtener información de Google")
 
-    # buscar si ya existe una cuenta google con este provider_user_id
+    # usuario ya existe con google
     oauth_account = crud_oauth.get_oauth_account_by_provider(db, provider="google", provider_user_id=google_id)
-
     if oauth_account:
-        create_session_cookie(response, oauth_account.user_id)
-        return {"detail": "Login exitoso"}
+        redirect = RedirectResponse(url=f"{FRONTEND_URL}/dashboard")
+        create_session_cookie(redirect, oauth_account.user_id)
+        return redirect
 
-    # buscar si el email ya está registrado con google
+    # email ya registrado con google, vinculamos el google_id
     existing_by_email = crud_oauth.get_oauth_account_by_email_and_provider(db, email=email, provider="google")
     if existing_by_email:
         crud_oauth.update_oauth_account(db, existing_by_email.oauth_account_id, {"provider_user_id": google_id})
-        create_session_cookie(response, existing_by_email.user_id)
-        return {"detail": "Cuenta vinculada y login exitoso"}
+        redirect = RedirectResponse(url=f"{FRONTEND_URL}/dashboard")
+        create_session_cookie(redirect, existing_by_email.user_id)
+        return redirect
 
-    # usuario nuevo: crear user y oauth_account
-    new_user = crud_user.create_user(db, UserCreate(
-        user_nickname=name,
-        user_role="user",
-        user_status="active",
-        user_description="",
-        created_at=datetime.utcnow()
-    ))
-
-    crud_oauth.create_oauth_account(db, OAuthAccountCreate(
-        user_id=new_user.user_id,
-        provider="google",
-        provider_user_id=google_id,
-        email=email,
-        name=name,
-        created_at=datetime.utcnow()
-    ))
-
-    create_session_cookie(response, new_user.user_id)
-    return {"detail": "Registro exitoso"}
+    # usuario nuevo → mandamos al signup con datos precargados, sin crear nada aún
+    params = urlencode({"name": name, "email": email, "provider": "google"})
+    return RedirectResponse(url=f"{FRONTEND_URL}/signup?{params}")
 
 
 @router.post("/logout")
@@ -138,7 +129,7 @@ def register_local(data: LocalRegisterSchema, response: Response, db: Session = 
 
     new_user = crud_user.create_user(db, UserCreate(
         user_nickname=data.name,
-        user_role="user",
+        user_role=data.user_role,
         user_status="active",
         user_description="",
         created_at=datetime.utcnow()
