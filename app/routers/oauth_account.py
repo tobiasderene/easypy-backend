@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from datetime import datetime
 import httpx
@@ -79,18 +79,21 @@ async def google_callback(code: str, response: Response, db: Session = Depends(g
     if not google_id or not email:
         raise HTTPException(status_code=400, detail="No se pudo obtener información de Google")
 
-    oauth_account = crud_oauth.get_oauth_account_by_google_id(db, google_id)
+    # buscar si ya existe una cuenta google con este provider_user_id
+    oauth_account = crud_oauth.get_oauth_account_by_provider(db, provider="google", provider_user_id=google_id)
 
     if oauth_account:
         create_session_cookie(response, oauth_account.user_id)
         return {"detail": "Login exitoso"}
 
-    existing_by_email = crud_oauth.get_oauth_account_by_email(db, email)
+    # buscar si el email ya está registrado con google
+    existing_by_email = crud_oauth.get_oauth_account_by_email_and_provider(db, email=email, provider="google")
     if existing_by_email:
-        crud_oauth.update_oauth_account(db, existing_by_email.oauth_account_id, {"google_id": google_id})
+        crud_oauth.update_oauth_account(db, existing_by_email.oauth_account_id, {"provider_user_id": google_id})
         create_session_cookie(response, existing_by_email.user_id)
         return {"detail": "Cuenta vinculada y login exitoso"}
 
+    # usuario nuevo: crear user y oauth_account
     new_user = crud_user.create_user(db, UserCreate(
         user_nickname=name,
         user_role="user",
@@ -101,7 +104,8 @@ async def google_callback(code: str, response: Response, db: Session = Depends(g
 
     crud_oauth.create_oauth_account(db, OAuthAccountCreate(
         user_id=new_user.user_id,
-        google_id=google_id,
+        provider="google",
+        provider_user_id=google_id,
         email=email,
         name=name,
         created_at=datetime.utcnow()
@@ -120,3 +124,48 @@ def logout(response: Response):
 @router.get("/me")
 def get_me(user=Depends(get_current_user)):
     return user
+
+
+from app.schemas.oauth_account import LocalRegisterSchema, LocalLoginSchema
+from app.utils.security import hash_password, verify_password
+
+
+@router.post("/register", status_code=201)
+def register_local(data: LocalRegisterSchema, response: Response, db: Session = Depends(get_db)):
+    existing = crud_oauth.get_oauth_account_by_email_and_provider(db, email=data.email, provider="local")
+    if existing:
+        raise HTTPException(status_code=400, detail="Este email ya está registrado")
+
+    new_user = crud_user.create_user(db, UserCreate(
+        user_nickname=data.name,
+        user_role="user",
+        user_status="active",
+        user_description="",
+        created_at=datetime.utcnow()
+    ))
+
+    crud_oauth.create_oauth_account(db, OAuthAccountCreate(
+        user_id=new_user.user_id,
+        provider="local",
+        provider_user_id=None,
+        email=data.email,
+        name=data.name,
+        password_hash=hash_password(data.password),
+        created_at=datetime.utcnow()
+    ))
+
+    create_session_cookie(response, new_user.user_id)
+    return {"detail": "Registro exitoso"}
+
+
+@router.post("/login")
+def login_local(data: LocalLoginSchema, response: Response, db: Session = Depends(get_db)):
+    oauth_account = crud_oauth.get_oauth_account_by_email_and_provider(db, email=data.email, provider="local")
+    if not oauth_account:
+        raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
+
+    if not verify_password(data.password, oauth_account.password_hash):
+        raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
+
+    create_session_cookie(response, oauth_account.user_id)
+    return {"detail": "Login exitoso"}

@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from datetime import datetime
 from app.db.models import OAuthAccount
 from app.schemas.oauth_account import OAuthAccountCreate, OAuthAccountUpdate
 
@@ -9,15 +8,25 @@ def get_oauth_account(db: Session, oauth_account_id: int):
 
 
 def get_oauth_account_by_user(db: Session, user_id: int):
-    return db.query(OAuthAccount).filter(OAuthAccount.user_id == user_id).first()
+    return db.query(OAuthAccount).filter(OAuthAccount.user_id == user_id).all()
 
 
-def get_oauth_account_by_email(db: Session, email: str):
-    return db.query(OAuthAccount).filter(OAuthAccount.email == email).first()
+def get_oauth_account_by_provider(db: Session, provider: str, provider_user_id: str):
+    return db.query(OAuthAccount).filter(
+        OAuthAccount.provider == provider,
+        OAuthAccount.provider_user_id == provider_user_id
+    ).first()
 
 
-def get_oauth_account_by_google_id(db: Session, google_id: str):
-    return db.query(OAuthAccount).filter(OAuthAccount.google_id == google_id).first()
+def get_oauth_account_by_email_and_provider(db: Session, email: str, provider: str):
+    return db.query(OAuthAccount).filter(
+        OAuthAccount.email == email,
+        OAuthAccount.provider == provider
+    ).first()
+
+
+def get_oauth_accounts_by_email(db: Session, email: str):
+    return db.query(OAuthAccount).filter(OAuthAccount.email == email).all()
 
 
 def create_oauth_account(db: Session, oauth_account: OAuthAccountCreate):

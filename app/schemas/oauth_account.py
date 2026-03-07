@@ -6,9 +6,10 @@ from pydantic import BaseModel, EmailStr
 
 class OAuthAccountBase(BaseModel):
     user_id: int
+    provider: str
+    provider_user_id: Optional[str] = None
     email: EmailStr
     name: str
-    google_id: Optional[str] = None
 
 
 class OAuthAccountCreate(OAuthAccountBase):
@@ -22,6 +23,7 @@ class OAuthAccountUpdate(BaseModel):
     name: Optional[str] = None
     password: Optional[str] = None
     password_hash: Optional[str] = None
+    provider_user_id: Optional[str] = None
 
 
 class OAuthAccountOut(OAuthAccountBase):
@@ -35,3 +37,18 @@ OAuthAccountBase.model_rebuild()
 OAuthAccountCreate.model_rebuild()
 OAuthAccountUpdate.model_rebuild()
 OAuthAccountOut.model_rebuild()
+
+
+class LocalRegisterSchema(BaseModel):
+    email: EmailStr
+    name: str
+    password: str
+
+
+class LocalLoginSchema(BaseModel):
+    email: EmailStr
+    password: str
+
+
+LocalRegisterSchema.model_rebuild()
+LocalLoginSchema.model_rebuild()

@@ -176,14 +176,14 @@ class Image(Base):
     product = relationship("Product", back_populates="images")
     user = relationship("User", back_populates="images")
 
-
 class OAuthAccount(Base):
     __tablename__ = 'oauth_accounts'
 
     oauth_account_id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
-    google_id = Column(String, unique=True, nullable=True)
-    email = Column(String, unique=True, nullable=False)
+    provider = Column(String, nullable=False)
+    provider_user_id = Column(String, nullable=True)
+    email = Column(String, nullable=False)
     name = Column(String, nullable=False)
     password = Column(String, nullable=True)
     password_hash = Column(String, nullable=True)

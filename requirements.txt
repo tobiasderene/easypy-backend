@@ -8,3 +8,5 @@ httpx
 itsdangerous
 google-cloud-storage
 python-multipart
+bcrypt 
+passlib
