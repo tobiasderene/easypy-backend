@@ -8,7 +8,7 @@ from app.db.database import get_db
 from app.crud import oauth_account as crud_oauth
 from app.crud import user as crud_user
 from app.schemas.user import UserCreate
-from app.schemas.oauth_account import OAuthAccountCreate
+from app.schemas.oauth_account import OAuthAccountCreate, GoogleRegisterSchema
 from app.dependencies import get_current_user
 from itsdangerous import URLSafeSerializer
 
@@ -142,6 +142,33 @@ def register_local(data: LocalRegisterSchema, response: Response, db: Session = 
         email=data.email,
         name=data.name,
         password_hash=hash_password(data.password),
+        created_at=datetime.utcnow()
+    ))
+
+    create_session_cookie(response, new_user.user_id)
+    return {"detail": "Registro exitoso"}
+
+
+@router.post("/register/google", status_code=201)
+def register_google(data: GoogleRegisterSchema, response: Response, db: Session = Depends(get_db)):
+    existing = crud_oauth.get_oauth_account_by_email_and_provider(db, email=data.email, provider="google")
+    if existing:
+        raise HTTPException(status_code=400, detail="Este email ya está registrado con Google")
+
+    new_user = crud_user.create_user(db, UserCreate(
+        user_nickname=data.name,
+        user_role=data.user_role,
+        user_status="active",
+        user_description="",
+        created_at=datetime.utcnow()
+    ))
+
+    crud_oauth.create_oauth_account(db, OAuthAccountCreate(
+        user_id=new_user.user_id,
+        provider="google",
+        provider_user_id=None,  # no lo tenemos en este punto
+        email=data.email,
+        name=data.name,
         created_at=datetime.utcnow()
     ))
 

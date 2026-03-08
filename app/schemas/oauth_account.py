@@ -53,3 +53,10 @@ class LocalLoginSchema(BaseModel):
 
 LocalRegisterSchema.model_rebuild()
 LocalLoginSchema.model_rebuild()
+
+class GoogleRegisterSchema(BaseModel):
+    name: str
+    email: str
+    user_role: str
+
+GoogleRegisterSchema.model_rebuild()
