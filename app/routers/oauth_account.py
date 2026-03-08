@@ -108,7 +108,12 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
 
 @router.post("/logout")
 def logout(response: Response):
-    response.delete_cookie("session")
+    response.delete_cookie(
+        key="session",
+        httponly=True,
+        secure=True,
+        samesite="none"
+    )
     return {"detail": "Sesión cerrada"}
 
 
