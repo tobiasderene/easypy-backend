@@ -37,7 +37,7 @@ def create_session_cookie(response: Response, user_id: int):
         value=token,
         httponly=True,
         secure=True,
-        samesite="lax"
+        samesite="none"
     )
 
 
